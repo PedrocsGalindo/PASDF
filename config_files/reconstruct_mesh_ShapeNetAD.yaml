@@ -1,4 +1,4 @@
-folder_sdf: 'pose'   
+dataset: ShapeNetAD
 obj_ids: [ 
     "ashtray0","bag0","bottle0","bottle1","bottle3","bowl0",
     "bowl1","bowl2","bowl3","bowl4","bowl5","bucket0",
@@ -9,3 +9,5 @@ obj_ids: [
     "vase5","vase7","vase8","vase9"
     ]  
 resolution: 256
+checkpoint_path: results/ShapeNetAD/runs_sdf/
+mesh_save_dir: results/ShapeNetAD/reconstruct_mesh/

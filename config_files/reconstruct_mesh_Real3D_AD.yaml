@@ -1,3 +1,5 @@
-folder_sdf: 'pose'   
+dataset: Real3D_AD
 obj_ids: ["airplane","candybar","car","chicken","diamond","duck","fish","gemstone","seahorse","shell","starfish","toffees"] 
 resolution: 256
+checkpoint_path: results/Real3D_AD/runs_sdf/
+mesh_save_dir: results/Real3D_AD/reconstruct_mesh/

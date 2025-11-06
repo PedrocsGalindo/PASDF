@@ -137,7 +137,26 @@ python Test/AD_test.py --config config_files/test_ShapeNetAD.yaml
 
 ## 🧩 Reconstruction
 
-Reconstruction and surface refinement modules  will be released soon.
+### 1. **Modify the YAML Configuration File**
+
+Update the `checkpoint_path` in `config_files/reconstruct_mesh_ShapeNetAD.yaml`:
+
+```yaml
+checkpoint_path: results/ShapeNetAD/runs_sdf/ # default path 
+mesh_save_dir: results/ShapeNetAD/reconstruct_mesh/
+```
+
+### 2. **Run the Reconstruction Script**
+
+After modifying the YAML configuration file, run the reconstruction script using the following command:
+
+```bash
+#for Anomaly-ShapeNet dataset
+python scripts/reconstruct_mesh.py config_files/reconstruct_mesh_ShapeNetAD.yaml
+#for Real3D-AD dataset
+python scripts/reconstruct_mesh.py config_files/reconstruct_mesh_Real3D_AD.yaml
+```
+
 
 ## Citation
 
