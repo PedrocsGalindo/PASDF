@@ -87,7 +87,8 @@ def main(cfg):
     np.save(os.path.join(results_path, "Real3D_AD", f'idx_int2str_dict.npy'), idx_int2str_dict)
 
 if __name__ == '__main__':
-    cfg_path = os.path.join(config_files_path, 'extract_sdf.yaml')
+    # You have to change the file name according to the data
+    cfg_path = os.path.join(config_files_path, 'extract_sdf_Real3D_AD.yaml')
     with open(cfg_path, 'rb') as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     main(cfg)

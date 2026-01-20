@@ -1,4 +1,5 @@
 import torch.nn as nn
+import  torch.nn.utils.weight_norm as weight_norm
 import torch
 import copy
 from tqdm import tqdm
@@ -40,7 +41,7 @@ class SDFModel_ofo_PoseEmbedder(torch.nn.Module):
         # Add sequential layers
         layers = []
         for _ in range(num_layers - num_extra_layers):
-            layers.append(nn.Sequential(nn.utils.weight_norm(nn.Linear(input_dim, inner_dim)), nn.ReLU()))
+            layers.append(nn.Sequential(weight_norm(nn.Linear(input_dim, inner_dim)), nn.ReLU()))
             input_dim = inner_dim
         self.net = nn.Sequential(*layers)
         self.final_layer = nn.Sequential(nn.Linear(inner_dim, output_dim), nn.Tanh())
