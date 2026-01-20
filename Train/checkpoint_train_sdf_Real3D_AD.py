@@ -34,14 +34,36 @@ def _get_rng_state():
         state["cuda"] = torch.cuda.get_rng_state_all()
     return state
 
+def _to_torch_byte_tensor(x):
+    if x is None:
+        return None
+    if isinstance(x, torch.Tensor):
+        return x.to(dtype=torch.uint8, device="cpu")
+    if isinstance(x, (bytes, bytearray)):
+        return torch.frombuffer(x, dtype=torch.uint8).clone()
+    if isinstance(x, np.ndarray):
+        return torch.from_numpy(x.astype(np.uint8, copy=False)).cpu()
+    # list/tuple etc.
+    return torch.tensor(x, dtype=torch.uint8)
+
 def _set_rng_state(state):
     if state is None:
         return
     random.setstate(state.get("python"))
     np.random.set_state(state.get("numpy"))
-    torch.set_rng_state(state.get("torch"))
-    if torch.cuda.is_available() and "cuda" in state:
-        torch.cuda.set_rng_state_all(state["cuda"])
+    # Torch CPU RNG
+    t = state.get("torch")
+    if t is not None:
+        torch.set_rng_state(_to_torch_byte_tensor(t))
+
+    # Torch CUDA RNG (se você salva isso)
+    cuda = state.get("cuda")
+    if cuda is not None and torch.cuda.is_available():
+        # cuda pode ser lista de estados por device
+        if isinstance(cuda, (list, tuple)):
+            torch.cuda.set_rng_state_all([_to_torch_byte_tensor(s) for s in cuda])
+        else:
+            torch.cuda.set_rng_state(_to_torch_byte_tensor(cuda))
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Device: {device}')
@@ -146,8 +168,9 @@ class Trainer():
             best_loss = 10000000000
             start_epoch, best_loss = self.load_checkpoint_if_exists(save_dir)
 
+            
             start = time.time()
-            for epoch in range(self.train_cfg['epochs']):
+            for epoch in range(start_epoch, self.train_cfg['epochs']):
                 print(f'============================ {class_name}Epoch {epoch} ============================')
                 self.epoch = epoch
 
