@@ -47,29 +47,61 @@ def build_dataset(cfg: dict, cls_name: str):
 
 def evaluate(loader, cfg, cls_name):
     model = SDFScorer(cfg, cls_name, device=DEVICE)
-    pixel_scores, pixel_labels = [], []
+    model.eval()
+
+    out_dir = os.path.join(cfg["infer"]["output_dir"], "tmp_scores", cls_name)
+    os.makedirs(out_dir, exist_ok=True)
+
+    pixel_files = []
+    label_files = []
     obj_scores, obj_labels = [], []
-    for batch in tqdm(loader, desc=f"Evaluating [{cls_name}]", ncols=100):
-        pts, mask, label, template_path = batch["points"], batch["mask"], batch["label"], batch["template_points"]
 
-        pts_for_infer = pts[0]
-       
-        pts_for_infer, _, _ = register_point_clouds(pts_for_infer, template_path[0],voxel_size=cfg['infer']['voxel_size'],cd_threshold = cfg['infer']['cd_threshold'])
-        pts_for_infer = torch.from_numpy(np.asarray(pts_for_infer.points)).float()
-        pts_for_infer = pts_for_infer.unsqueeze(0)    
+    with torch.no_grad():
+        for i, batch in enumerate(tqdm(loader, desc=f"Evaluating [{cls_name}]", ncols=100)):
+            pts, mask, label, template_path = batch["points"], batch["mask"], batch["label"], batch["template_points"]
 
-        pixel_score, object_score = model.infer(pts_for_infer )
-        pixel_scores.extend(pixel_score)
-        pixel_labels.extend(mask[0].flatten())
-        obj_scores.append(object_score)
-        obj_labels.append(label[0])
+            pts_for_infer = pts[0]
+            pts_for_infer, _, _ = register_point_clouds(
+                pts_for_infer, template_path[0],
+                voxel_size=cfg['infer']['voxel_size'],
+                cd_threshold=cfg['infer']['cd_threshold']
+            )
+
+            pts_for_infer = torch.from_numpy(np.asarray(pts_for_infer.points)).float().unsqueeze(0).to(DEVICE)
+
+            pixel_score, object_score = model.infer(pts_for_infer)
+
+            # salva pixel scores/labels em disco (por batch)
+            ps = np.asarray(pixel_score, dtype=np.float32)
+            yl = np.asarray(mask[0].flatten(), dtype=np.uint8)
+
+            pf = os.path.join(out_dir, f"pixel_scores_{i:06d}.npy")
+            lf = os.path.join(out_dir, f"pixel_labels_{i:06d}.npy")
+            np.save(pf, ps); np.save(lf, yl)
+
+            pixel_files.append(pf)
+            label_files.append(lf)
+
+            obj_scores.append(float(object_score[0]))
+            obj_labels.append(int(label[0]))
+
+            # libera referências (ajuda em cloud)
+            del pts_for_infer, ps, yl, pixel_score, object_score
+
+    # carrega tudo no final (aqui pode escolher concatenar por partes)
+    pixel_scores = np.concatenate([np.load(f) for f in pixel_files])
+    pixel_labels = np.concatenate([np.load(f) for f in label_files])
 
     pix_auc = roc_auc_score(pixel_labels, pixel_scores)
     obj_auc = roc_auc_score(obj_labels, obj_scores)
     return pix_auc, obj_auc
 
 def main(args):
-
+    import torch
+    print("CUDA available:", torch.cuda.is_available())
+    if torch.cuda.is_available():
+        print("GPU:", torch.cuda.get_device_name(0))
+        
     with open(args.config, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     print(cfg)
@@ -78,9 +110,18 @@ def main(args):
     for cls_name in cfg['dataset']['cls_name']:
             
         ds = build_dataset(cfg, cls_name)
-        loader = DataLoader(ds, batch_size=cfg['infer']['batch_size'], shuffle=cfg['infer']['shuffle'], num_workers=cfg['infer']['batch_size'])
-          
-        pix_auc, obj_auc = evaluate(loader, cfg, cls_name)
+        loader = DataLoader(ds, batch_size=cfg['infer']['batch_size'], shuffle=cfg['infer']['shuffle'], num_workers=cfg['infer']['num_workers'])
+        try:
+            pix_auc, obj_auc = evaluate(loader, cfg, cls_name)
+        except Exception as e:
+            # aqui você captura qualquer exceção durante a avaliação
+            error_message = f"erro grave na avaliação: {type(e).__name__} - {e}"
+            print(error_message, file=sys.stderr) # imprime o erro no stderr
+            # você pode até salvar mais detalhes se quiser, tipo um traceback completo
+            import traceback
+            print("\nfull traceback:", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+
 
         print(f"---{cls_name}-- AUROC Pixel: {pix_auc}, AUROC Object: {obj_auc}")
         results.append({
