@@ -1,0 +1,15 @@
+CUDA available: True
+GPU: Tesla T4
+{'seed': 42, 'device': 'cuda', 'dataset': {'name': 'Real3D_AD', 'dataset_dir': 'dataset/Real3D-AD-PCD', 'cls_name': ['airplane', 'car', 'candybar'], 'normalize': True, 'scale_factor': 17.744022369384766, 'template_path': 'data/Real3D_AD'}, 'infer': {'batch_size': 1, 'num_workers': 0, 'voxel_size': 0.03, 'top_k': 1000, 'shuffle': False, 'cd_threshold': 1.8, 'checkpoint_path': 'results/Real3D_AD/runs_sdf/', 'output_dir': 'results/Real3D_AD/runs_sdf/outputs', 'settings_path': 'results/Real3D_AD/runs_sdf/settings.yaml'}}
+---airplane-- AUROC Pixel: 0.7850812882906524, AUROC Object: 0.604
+---car-- AUROC Pixel: 0.7531737994339868, AUROC Object: 0.8112
+---candybar-- AUROC Pixel: 0.5502314157709883, AUROC Object: 0.7896
+
+==== Overall Evaluation Results ====
+Class                Pixel AUROC     Object AUROC   
+--------------------------------------------------
+airplane             0.7851          0.6040         
+car                  0.7532          0.8112         
+candybar             0.5502          0.7896         
+--------------------------------------------------
+✅ Results saved to: results/Real3D_AD/runs_sdf/outputs/evaluation_results.csv
