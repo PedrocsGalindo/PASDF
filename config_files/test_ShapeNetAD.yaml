@@ -2,7 +2,7 @@ seed: 42
 device: cuda
 dataset:
   name: ShapeNetAD
-  dataset_dir: /path/to/Anomaly-ShapeNet-v2/dataset/16384
+  dataset_dir: /workspace/PASDF/dataset/Anomaly-ShapeNet-v2/dataset/pcd
   cls_name: [ 
     "ashtray0","bag0","bottle0","bottle1","bottle3","bowl0",
     "bowl1","bowl2","bowl3","bowl4","bowl5","bucket0",
