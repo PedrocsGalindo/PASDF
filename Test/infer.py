@@ -75,3 +75,7 @@ class SDFScorer:
         anomaly_score_object = [float(topk_mean)]
 
         return anomaly_score_pixel, anomaly_score_object
+    
+    def eval(self):
+        self.model.eval()
+        return self

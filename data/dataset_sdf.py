@@ -6,9 +6,18 @@ import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(current_dir, "../../PASDF")))
 sys.path = [path for path in sys.path if 'liwq' not in path and 'zbz' not in path]
-import results
+
+try:
+    import results
+except ModuleNotFoundError:
+    results = None
+
+try:
+    import pysdf
+except ModuleNotFoundError:
+    pysdf = None
+
 import trimesh
-import pysdf
 results_path = os.path.join(current_dir, "../results")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
