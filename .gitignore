@@ -1,0 +1,6 @@
+data/Real3D_AD
+data/ShapeNetAD
+dataset/Anomaly-ShapeNet-v2/
+dataset/Real3D-AD-PCD/
+results/
+*.pyc
