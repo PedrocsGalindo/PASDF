@@ -1,6 +1,8 @@
 data/Real3D_AD
 data/ShapeNetAD
+data/Thingi10K
 dataset/Anomaly-ShapeNet-v2/
 dataset/Real3D-AD-PCD/
+dataset/Thingi10K
 results/
 *.pyc

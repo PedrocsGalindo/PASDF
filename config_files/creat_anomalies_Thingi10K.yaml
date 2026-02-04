@@ -1,0 +1,12 @@
+dataset: 'Thingi10K'   
+
+num_anomalies_per_model: 10   # Number of anomalies to be created per model
+anomaly_size_range: [0.02, 0.05]   
+
+gaussian_dent : {
+  radius: 0.03,
+  depth: 0.02
+}
+remove_region : {
+  radius: 0.03
+}

@@ -25,7 +25,7 @@ For each object, sample points and store their distance to the nearest triangle.
 dataset_path = os.path.join(current_dir, "Real3D_AD")
 results_path = os.path.join(current_dir, "../results")
 config_files_path = os.path.join(current_dir, "../config_files")
-print(dataset_path)
+
 def combine_sample_latent(samples, latent_class):
     latent_class_full = np.tile(latent_class, (samples.shape[0], 1))
     return np.hstack((latent_class_full, samples))
