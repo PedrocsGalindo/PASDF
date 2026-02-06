@@ -1,7 +1,8 @@
 dataset: 'Thingi10K'   
 
-num_anomalies_per_model: 10   # Number of anomalies to be created per model
 anomaly_size_range: [0.02, 0.05]   
+anomaly_probability: 0.5   
+num_of_rounds: 15   # Number of rounds for creating anomalies, each round may or may not create an anomaly
 
 gaussian_dent : {
   radius: 0.03,

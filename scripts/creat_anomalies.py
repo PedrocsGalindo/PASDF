@@ -16,7 +16,7 @@ sys.path = [path for path in sys.path if 'liwq' not in path and 'zbz' not in pat
 dataset_path = os.path.join(current_dir, "../data/Thingi10K")
 config_files_path = os.path.join(current_dir, "../config_files")
 
-point_cloud_save_path = os.path.join(current_dir, "../dataset/Thingi10K/dataset")
+dataset_pcd_save_path = os.path.join(current_dir, "../dataset/Thingi10K/dataset/pcd")
 
 def stl_to_pointcloud(stl_path: str, n_points: int = 200000):
     mesh = trimesh.load(stl_path, force='mesh')
@@ -43,86 +43,113 @@ def gaussian_dent(pcd: o3d.geometry.PointCloud,
     pts = np.asarray(pcd.points)
     nrm = np.asarray(pcd.normals)
 
-    # distância ao centro
     d = np.linalg.norm(pts - center, axis=1)
 
-    # máscara suave (gaussiana) -> 1 no centro, cai até ~0 no raio
     sigma = radius / 3.0
     w = np.exp(-(d**2) / (2 * sigma**2))
     w[d > radius] = 0.0
 
-    # deslocamento ao longo da normal
     sign = -1.0 if inward else 1.0
     displacement = (sign * depth) * w[:, None] * nrm
-
     pts_def = pts + displacement
+
+    mask = (w > 0.0).astype(np.float32)  
 
     out = o3d.geometry.PointCloud()
     out.points = o3d.utility.Vector3dVector(pts_def)
     out.normals = o3d.utility.Vector3dVector(nrm)
-    return out
+    return out, mask
 
-def remove_region(pcd: o3d.geometry.PointCloud, center: np.ndarray, radius: float):
+def remove_region(pcd, center, radius, thickness=0.05):
     pts = np.asarray(pcd.points)
     nrm = np.asarray(pcd.normals)
 
     d = np.linalg.norm(pts - center, axis=1)
     keep = d > radius
 
+    pts_kept = pts[keep]
+    nrm_kept = nrm[keep]
+    d_kept = d[keep]
+
+    band = (d_kept <= (radius + thickness)).astype(np.float32)
+
     out = o3d.geometry.PointCloud()
-    out.points = o3d.utility.Vector3dVector(pts[keep])
-    out.normals = o3d.utility.Vector3dVector(nrm[keep])
-    return out
+    out.points = o3d.utility.Vector3dVector(pts_kept)
+    out.normals = o3d.utility.Vector3dVector(nrm_kept)
+    return out, band
 
 def random_center_from_pcd(pcd):
     pts = np.asarray(pcd.points)
     idx = np.random.randint(0, len(pts))
     return pts[idx]
 
-def create_anomalies(pcd : o3d.geometry.PointCloud,
-                     gaussian_dent_dict : dict,
-                     remove_region_dict : dict
-                     ) -> o3d.geometry.PointCloud:
-    
-        anomaly_types = ['dent', 'bulge', 'hole']
-        selected_anomaly = random.choice(anomaly_types)
-        center = random_center_from_pcd(pcd)
+def create_anomalies(pcd, gaussian_dent_dict, remove_region_dict):
+    anomaly_types = ['dent', 'bulge', 'hole']
+    selected_anomaly = random.choice(anomaly_types)
+    center = random_center_from_pcd(pcd)
 
-        if selected_anomaly == 'dent':
-            pcd_ano = gaussian_dent(pcd, center=center, radius=gaussian_dent_dict['radius'], depth=gaussian_dent_dict['depth'], inward=True)
-        elif selected_anomaly == 'bulge':
-            pcd_ano = gaussian_dent(pcd, center=center, radius=gaussian_dent_dict['radius'], depth=gaussian_dent_dict['depth'], inward=False)
-        elif selected_anomaly == 'hole':
-            pcd_ano = remove_region(pcd, center=center, radius=remove_region_dict['radius'])
-        
-        return pcd_ano
-    
-"""
-Falta:
-    - salvar os point clouds com anomalias
-    - salvar point clouds originais (sem anomalias) (para o teste)
+    if selected_anomaly == 'dent':
+        pcd_ano, mask = gaussian_dent(
+            pcd, center=center,
+            radius=gaussian_dent_dict['radius'],
+            depth=gaussian_dent_dict['depth'],
+            inward=True
+        )
 
-"""
+    elif selected_anomaly == 'bulge':
+        pcd_ano, mask = gaussian_dent(
+            pcd, center=center,
+            radius=gaussian_dent_dict['radius'],
+            depth=gaussian_dent_dict['depth'],
+            inward=False
+        )
+
+    elif selected_anomaly == 'hole':  
+        thickness = remove_region_dict.get('thickness', 0.05 * remove_region_dict['radius'])
+        pcd_ano, mask = remove_region(
+            pcd, center=center,
+            radius=remove_region_dict['radius'],
+            thickness=thickness
+        )
+
+    return pcd_ano, mask, selected_anomaly
+
+def save_gt_txt(gt_path: str, pcd: o3d.geometry.PointCloud, mask: np.ndarray):
+    pts = np.asarray(pcd.points)
+    assert len(pts) == len(mask), "GT mask precisa ter o mesmo tamanho do point cloud"
+
+    data = np.hstack([pts, mask.reshape(-1, 1)])
+    np.savetxt(gt_path, data, fmt="%.6f %.6f %.6f %.1f")
+
 def main(cfg):
     print(f"Getting object paths from {dataset_path}..." \
-          f"\nSaving point clouds to {point_cloud_save_path}\n")
+          f"\nSaving point clouds to {dataset_pcd_save_path}\n")
     
-    os.makedirs(point_cloud_save_path, exist_ok=True)
+    os.makedirs(dataset_pcd_save_path, exist_ok=True)
     obj_paths = sorted(glob(os.path.join(dataset_path, '*.stl')))
 
     for obj_idx, obj_path in enumerate(obj_paths):
         pcd = stl_to_pointcloud(obj_path, n_points=150000)
         obj_name = os.path.basename(obj_path).split('.')[0]
-        os.makedirs(os.path.join(point_cloud_save_path, obj_name), exist_ok=True)
+        os.makedirs(os.path.join(dataset_pcd_save_path, f"{obj_name}/test"), exist_ok=True)
+        os.makedirs(os.path.join(dataset_pcd_save_path, f"{obj_name}/GT"), exist_ok=True)
     
-        for i in range(cfg['num_anomalies_per_model']):
-            pcd_ano = create_anomalies(pcd,
-                            gaussian_dent_dict=cfg['gaussian_dent'],
-                            remove_region_dict=cfg['remove_region'])
-            
-            save_path = os.path.join(point_cloud_save_path, f"{obj_name}/{obj_name}_{i}.ply")
-            o3d.io.write_point_cloud(save_path, pcd_ano)
-    
+        for i in range(cfg['num_of_rounds']):
+            if random.random() < cfg['anomaly_probability']:
+                pcd_ano, mask, anomaly_type = create_anomalies(pcd,
+                                gaussian_dent_dict=cfg['gaussian_dent'],
+                                remove_region_dict=cfg['remove_region'])
+                
+                stem = f"{obj_name}_{i}_{anomaly_type}"
+                pcd_path = os.path.join(dataset_pcd_save_path, f"{obj_name}/test/{stem}.pcd")
+                gt_path  = os.path.join(dataset_pcd_save_path, f"{obj_name}/GT/{stem}.txt")
+
+                o3d.io.write_point_cloud(pcd_path, pcd_ano)
+                save_gt_txt(gt_path, pcd_ano, mask)
+            else:
+                # No need to creat a GT file for normal samples (but the name need to have "positive")
+                save_path = os.path.join(dataset_pcd_save_path, f"{obj_name}/test/{obj_name}_{i}_positive.pcd")
+                o3d.io.write_point_cloud(save_path, pcd)
 
 if __name__ == '__main__':
     # You have to change the file name according to the data
