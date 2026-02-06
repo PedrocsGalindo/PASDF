@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 import torch
 from dataset import Dataset_Real3D_AD_test
 from dataset import Dataset_ShapeNetAD_test
+from dataset import Dataset_Thingi10K_test
 from utils import set_seed
 from sklearn.metrics import roc_auc_score
 from infer import SDFScorer
@@ -35,6 +36,15 @@ def build_dataset(cfg: dict, cls_name: str):
         )
     elif name == "ShapeNetAD":
         return Dataset_ShapeNetAD_test(
+            dataset_dir=ds_cfg["dataset_dir"],
+            cls_name= cls_name,
+            num_points=ds_cfg.get("num_points", 0),
+            normalize=ds_cfg.get("normalize", False),
+            scale_factor=ds_cfg.get("scale_factor", 1.0),
+            template_path = ds_cfg.get("template_path", None),
+        )
+    elif name == "Thingi10K":
+        return Dataset_Thingi10K_test(
             dataset_dir=ds_cfg["dataset_dir"],
             cls_name= cls_name,
             num_points=ds_cfg.get("num_points", 0),
